@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import logo from "/logo.webp"; // Ensure the correct path to your logo
 
 const Navbar: React.FC = () => {
@@ -6,8 +5,8 @@ const Navbar: React.FC = () => {
     <div className="relative">
       <div className="flex bg-pink-500 shadow-lg  w-full top-0 py-4 px-4 sm:px-10  font-[sans-serif] min-h-[70px] tracking-wide  z-50">
         <div className="flex flex-wrap items-center justify-between gap-4 w-full">
-          <Link
-            to="/"
+          <a
+            href="/"
             className="flex items-center"
           >
             <div className="w-[100px] top-0 bottom-0 absolute left-2 h-[70px] overflow-hidden">
@@ -20,7 +19,7 @@ const Navbar: React.FC = () => {
             <span className="font-bold ml-16 text-black pl-3 text-lg hidden lg:block">
               KeyChains By Bogy
             </span>
-          </Link>
+          </a>
 
           <div
             className={`flex items-start justify-end fixed inset-0  p-6 lg:p-0 lg:static lg:flex lg:bg-transparent z-50`}
@@ -40,24 +39,24 @@ const Navbar: React.FC = () => {
             </button>
 
             <div className="lg:flex lg:items-center lg:w-auto w-full md:w-[50%] h-full lg:bg-transparent bg-pink-500 lg:p-0 p-8">
-              <Link
-                to="/"
+              <a
+                href="/"
                 className="block lg:inline-block text-black px-3 py-2 rounded text-lg font-medium"
               >
                 Products
-              </Link>
-              <Link
-                to="/"
+              </a>
+              <a
+                href="/"
                 className="block lg:inline-block text-black px-3 py-2 rounded text-lg font-medium"
               >
                 About Us
-              </Link>
-              <Link
-                to="/"
+              </a>
+              <a
+                href="/"
                 className="block lg:inline-block text-black px-3 py-2 rounded mr-3 text-lg font-medium"
               >
                 Contact
-              </Link>
+              </a>
             </div>
           </div>
 
