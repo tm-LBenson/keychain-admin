@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { db } from "./firestore";
-import { collection, getDocs } from "firebase/firestore";
+import React, { useState } from "react";
+import { useProducts } from "./ProductsContext";
+
 import { Link } from "react-router-dom";
 import NewProductForm from "./NewProductForm";
 import Modal from "./Modal";
@@ -15,26 +15,11 @@ export interface Product {
 }
 
 const ProductList: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { products } = useProducts();
   const [showForm, setShowForm] = useState(false);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      const querySnapshot = await getDocs(collection(db, "products"));
-      const productsArray: Product[] = querySnapshot.docs.map((doc) => ({
-        ...(doc.data() as Product),
-        id: doc.id,
-      }));
-      setProducts(productsArray);
-      setLoading(false);
-    };
-
-    fetchProducts();
-  }, []);
   const toggleForm = () => setShowForm(!showForm);
 
-  if (loading) {
+  if (!products.length) {
     return <p>Loading...</p>;
   }
 
@@ -80,10 +65,12 @@ const ProductList: React.FC = () => {
           <NewProductForm onClose={() => setShowForm(false)} />
         </Modal>
         {products.map((product) => (
-          <div className="relative bg-pink-200 rounded-2xl shadow-lg">
+          <div
+            key={product.id}
+            className="relative bg-pink-200 rounded-2xl shadow-lg"
+          >
             <Link
               to={`/product/${product.id}`}
-              key={product.id}
               className="bg-gray-200 rounded-xl cursor-pointer hover:scale-[1.03] transition-all relative overflow-hidden"
             >
               <div className="p-6">
