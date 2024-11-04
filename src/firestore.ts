@@ -2,6 +2,13 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+import {
+  getAuth,
+  signOut,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBmgXbT57B18rYP8ASZrOEm98JpoNW-Awo",
@@ -15,6 +22,37 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+export const db = getFirestore(app); //
 const analytics = getAnalytics(app);
+
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+export const signInWithGoogle = () => {
+  signInWithPopup(auth, provider)
+    .then((result) => {
+      const user = result.user;
+      console.log("Signed in user:", user);
+    })
+    .catch((error) => {
+      const errorCode = error.code;
+      const errorMessage = error.message;
+
+      console.error("SignIn Error:", errorCode, errorMessage);
+    });
+};
+// Inside your existing Firebase setup file
+
+export const logout = () => {
+  signOut(auth)
+    .then(() => {
+      console.log("User signed out successfully!");
+    })
+    .catch((error) => {
+      console.error("Sign out error:", error);
+    });
+};
+
+export { auth, onAuthStateChanged };
+
 console.log(analytics);

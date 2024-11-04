@@ -1,17 +1,30 @@
 import React, { useState } from "react";
+import ImageUploadModal from "./ImageUploadModal"; // Make sure this import path is correct
+import { addDoc, collection } from "firebase/firestore";
 import { db } from "./firestore";
-import { collection, addDoc } from "firebase/firestore";
+
+interface NewProduct {
+  name: string;
+  description: string;
+  imageUrls: string[];
+  price: string;
+  onHand: number;
+}
+
 interface ModalProps {
   onClose: () => void;
 }
+
 const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
-  const [newProduct, setNewProduct] = useState({
+  const [newProduct, setNewProduct] = useState<NewProduct>({
     name: "",
     description: "",
     imageUrls: [""],
     price: "",
     onHand: 0,
   });
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(-1); // To track which image URL to update
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -39,53 +52,74 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
     setNewProduct((prev) => ({ ...prev, imageUrls: newImageUrls }));
   };
 
+  const handleImageUrlAddition = (url: string) => {
+    // Update the active image URL or add a new one if none is active
+    if (activeImageIndex >= 0) {
+      handleImageUrlChange(activeImageIndex, url);
+    } else {
+      handleAddImageUrl();
+      setNewProduct((prev) => ({
+        ...prev,
+        imageUrls: [...prev.imageUrls, url],
+      }));
+    }
+    setIsUploadModalOpen(false);
+  };
+
+  const openUploadModal = (index: number) => {
+    setActiveImageIndex(index); // Set the current index for updating the URL
+    setIsUploadModalOpen(true);
+  };
+
   const handleSubmit = async () => {
     try {
       await addDoc(collection(db, "products"), newProduct);
       console.log("Product added!");
-      onClose(); // Close the modal after saving
+      onClose();
     } catch (error) {
       console.error("Error adding document: ", error);
     }
   };
 
   return (
-    <div className="p-4">
-      <label className="block mb-1 font-bold">Product Name:</label>
+    <div className="p-4 space-y-4">
       <input
         type="text"
         name="name"
         value={newProduct.name}
         onChange={handleInputChange}
         placeholder="Product Name"
-        className="block w-full mb-4 p-2 border rounded"
+        className="block w-full mb-2 p-2 border rounded"
       />
-
-      <label className="block mb-1 font-bold">Description:</label>
       <textarea
         name="description"
         value={newProduct.description}
         onChange={handleInputChange}
         placeholder="Description"
-        className="block w-full mb-4 p-2 border rounded"
+        className="block w-full mb-2 p-2 border rounded"
+        rows={3}
       />
-
-      <label className="block mb-1 font-bold">Image URLs:</label>
       {newProduct.imageUrls.map((url, index) => (
         <div
           key={index}
-          className="flex items-center mb-2"
+          className="flex items-center space-x-2 mb-2"
         >
           <input
             type="text"
             value={url}
             onChange={(e) => handleImageUrlChange(index, e.target.value)}
             placeholder="Image URL"
-            className="block w-full p-2 border rounded"
+            className="flex-1 p-2 border rounded"
           />
           <button
+            onClick={() => openUploadModal(index)}
+            className="p-2 rounded bg-blue-500 text-white"
+          >
+            Upload Image
+          </button>
+          <button
             onClick={() => handleRemoveImageUrl(index)}
-            className="ml-2 p-2 rounded bg-red-500 text-white"
+            className="p-2 rounded bg-red-500 text-white"
           >
             Remove
           </button>
@@ -93,37 +127,38 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
       ))}
       <button
         onClick={handleAddImageUrl}
-        className="mb-4 p-2 rounded bg-green-500 text-white"
+        className="p-2 rounded bg-green-500 text-white"
       >
         Add Image URL
       </button>
-
-      <label className="block mb-1 font-bold">Price:</label>
       <input
         type="text"
         name="price"
         value={newProduct.price}
         onChange={handleInputChange}
         placeholder="Price"
-        className="block w-full mb-4 p-2 border rounded"
+        className="block w-full mb-2 p-2 border rounded"
       />
-
-      <label className="block mb-1 font-bold">Stock On Hand:</label>
       <input
         type="number"
         name="onHand"
         value={newProduct.onHand.toString()}
         onChange={handleInputChange}
         placeholder="Stock On Hand"
-        className="block w-full mb-4 p-2 border rounded"
+        className="block w-full mb-2 p-2 border rounded"
       />
-
       <button
         onClick={handleSubmit}
         className="bg-blue-500 text-white p-2 rounded"
       >
         Add Product
       </button>
+
+      <ImageUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onImageUpload={handleImageUrlAddition}
+      />
     </div>
   );
 };
