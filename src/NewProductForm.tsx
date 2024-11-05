@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import ImageUploadModal from "./ImageUploadModal"; // Make sure this import path is correct
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "./firestore";
+import { UnitAmount } from "./ProductsContext";
 
 interface NewProduct {
   name: string;
   description: string;
   imageUrls: string[];
-  price: string;
+  unitAmount: UnitAmount;
   onHand: number;
 }
 
@@ -20,7 +21,7 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
     name: "",
     description: "",
     imageUrls: [""],
-    price: "",
+    unitAmount: { value: "", currencyCode: "USD" },
     onHand: 0,
   });
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -134,7 +135,7 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
       <input
         type="text"
         name="price"
-        value={newProduct.price}
+        value={newProduct.unitAmount.value}
         onChange={handleInputChange}
         placeholder="Price"
         className="block w-full mb-2 p-2 border rounded"

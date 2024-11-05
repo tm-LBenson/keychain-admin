@@ -4,15 +4,6 @@ import { useProducts } from "./ProductsContext";
 import { Link } from "react-router-dom";
 import NewProductForm from "./NewProductForm";
 import Modal from "./Modal";
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  imageUrls: [""];
-  price: string;
-  onHand: number;
-  originalPrice?: string;
-}
 
 const ProductList: React.FC = () => {
   const { products } = useProducts();
@@ -87,7 +78,7 @@ const ProductList: React.FC = () => {
                   {product.name}
                 </h3>
                 <h4 className="text-lg text-gray-800 font-bold mt-6">
-                  ${product.price} ${product.originalPrice}
+                  ${product.unitAmount.value} ${product.originalPrice}
                 </h4>
               </div>
             </Link>

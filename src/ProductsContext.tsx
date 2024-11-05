@@ -8,12 +8,17 @@ import React, {
 import { db } from "./firestore";
 import { collection, getDocs } from "firebase/firestore";
 
+export interface UnitAmount {
+  currencyCode: string;
+  value: string;
+}
+
 export interface Product {
   id: string;
   name: string;
   description: string;
   imageUrls: string[];
-  price: string;
+  unitAmount: UnitAmount;
   onHand: number;
   originalPrice?: string;
 }

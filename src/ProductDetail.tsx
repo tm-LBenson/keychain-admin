@@ -9,22 +9,15 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import Modal from "./Modal";
+import { Product } from "./ProductsContext";
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  imageUrls: string[];
-  price: string;
-  onHand: number;
-}
 const ProductDetail: React.FC = () => {
   const [product, setProduct] = useState<Product>({
     id: "",
     name: "",
     description: "",
     imageUrls: [""],
-    price: "",
+    unitAmount: { value: "", currencyCode: "USD" },
     onHand: 0,
   });
 
@@ -43,7 +36,7 @@ const ProductDetail: React.FC = () => {
           name: data.name || "",
           description: data.description || "",
           imageUrls: data.imageUrls || [""],
-          price: data.price || "",
+          unitAmount: { value: data.price || "", currencyCode: "USD" },
           onHand: data.onHand || 0,
         });
       } else {
@@ -152,7 +145,7 @@ const ProductDetail: React.FC = () => {
             <input
               type="text"
               placeholder="Price"
-              value={product.price}
+              value={product.unitAmount.value}
               onChange={(e) => handleInputChange("price", e.target.value)}
               className="w-full px-2 py-1 border rounded"
             />
@@ -218,7 +211,7 @@ const ProductDetail: React.FC = () => {
         <div className="space-y-6">
           <h1 className="text-2xl font-bold">{product.name}</h1>
           <p>{product.description}</p>
-          <p className="text-xl font-bold">${product.price}</p>
+          <p className="text-xl font-bold">${product.unitAmount.value}</p>
         </div>
       </div>
     </div>
