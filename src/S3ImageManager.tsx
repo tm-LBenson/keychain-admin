@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { s3Client, bucketName } from "../aws-config";
 import Modal from "./Modal";
+import { useProducts } from "./ProductsContext";
 
 interface Image {
   name: string;
@@ -17,10 +18,32 @@ const S3ImageManager = () => {
   const [file, setFile] = useState<File | null>(null);
   const [filename, setFilename] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { getProductsUsingImage, isImageInCarousel } = useProducts();
+  const [imageStatus, setImageStatus] = useState<{ [key: string]: boolean }>(
+    {},
+  );
 
   useEffect(() => {
     fetchImages();
   }, []);
+
+  useEffect(() => {
+    const fetchImageUsageStatus = async () => {
+      const status: { [key: string]: boolean } = {};
+
+      for (const img of images) {
+        const isUsedInProduct = getProductsUsingImage(img.url).length > 0;
+        const isUsedInCarousel = await isImageInCarousel(img.url);
+        status[img.url] = isUsedInProduct || isUsedInCarousel;
+      }
+
+      setImageStatus(status);
+    };
+
+    if (images.length > 0) {
+      fetchImageUsageStatus();
+    }
+  }, [images, getProductsUsingImage, isImageInCarousel]);
 
   const fetchImages = async () => {
     try {
@@ -84,29 +107,41 @@ const S3ImageManager = () => {
       </button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mt-4 p-4">
-        {images.map((img, index) => (
-          <div
-            key={index}
-            className="rounded shadow-lg relative"
-          >
-            <img
-              className="max-h-[300px] object-cover"
-              src={img.url}
-              alt={img.name}
-            />
-            <div className="bottom-0 left-0 bg-gray-900 bg-opacity-75 text-white w-full text-center py-2">
-              {img.name}
+        {images.map((img, index) => {
+          const isUsed = imageStatus[img.url] || false;
+
+          return (
+            <div
+              key={index}
+              className="rounded shadow-lg relative"
+            >
+              <img
+                className="max-h-[300px] object-cover"
+                src={img.url}
+                alt={img.name}
+              />
+              <div className="bottom-0 left-0 bg-gray-900 bg-opacity-75 text-white w-full text-center py-2">
+                {img.name}
+              </div>
+              <div className="p-4 flex justify-between items-center">
+                <button
+                  onClick={() => handleDelete(img)}
+                  disabled={isUsed}
+                  className={`bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ${
+                    isUsed ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  Delete
+                </button>
+                {isUsed && (
+                  <span className="text-sm text-black">
+                    Image in use on product or carousel
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="p-4 flex justify-between items-center">
-              <button
-                onClick={() => handleDelete(img)}
-                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <Modal
