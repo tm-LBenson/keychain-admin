@@ -7,10 +7,10 @@ import ProductDetail from "./ProductDetail";
 import S3ImageManager from "./S3ImageManager";
 import { ProductsProvider } from "./ProductsContext";
 import { useIsAdminWhitelisted } from "./useAdminWhitelisted";
-// import { CarouselManager } from "./CarouselManager";
+import CarouselManager from "./CarouselManager";
 
 type ProtectedProps = {
-  children: ReactNode; // Typing children to accept ReactNode
+  children: ReactNode;
 };
 
 const App: React.FC = () => {
@@ -79,7 +79,7 @@ const AdminPage: React.FC = () => {
     <main>
       <h1 className="text-3xl mt-5 font-bold text-center">Admin Page</h1>
       <ProductList />
-      {/* <CarouselManager /> */}
+      <CarouselManager />
       <S3ImageManager />
     </main>
   );
