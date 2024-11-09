@@ -1,5 +1,5 @@
 import ReactDOM from "react-dom";
-import React from "react"; // Make sure to import React when using JSX in TypeScript files.
+import React from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,7 +10,7 @@ interface ModalProps {
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
   if (!isOpen) return null;
 
-  const modalRoot = document.getElementById("modal-root"); // Handling potential null
+  const modalRoot = document.getElementById("modal-root");
   if (!modalRoot) throw new Error("No modal root found");
 
   return ReactDOM.createPortal(

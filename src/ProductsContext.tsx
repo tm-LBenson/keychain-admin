@@ -27,6 +27,7 @@ interface ProductsContextType {
   products: Product[];
   isImageUrlInUse: (url: string) => boolean;
   getProductsUsingImage: (url: string) => string[];
+  isImageInCarousel: (url: string) => Promise<boolean>;
 }
 
 const ProductsContext = createContext<ProductsContextType | undefined>(
@@ -58,15 +59,38 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
     console.log(url);
     return products.some((product) => product.imageUrls.includes(url));
   };
+
   const getProductsUsingImage = (url: string): string[] => {
     return products
       .filter((product) => product.imageUrls.includes(url))
       .map((product) => product.name);
   };
 
+  const isImageInCarousel = async (url: string): Promise<boolean> => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "carousel"));
+      let isInCarousel = false;
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data && Array.isArray(data.urls) && data.urls.includes(url)) {
+          isInCarousel = true;
+        }
+      });
+      return isInCarousel;
+    } catch (error) {
+      console.error("Error checking if image is in carousel: ", error);
+      return false;
+    }
+  };
+
   return (
     <ProductsContext.Provider
-      value={{ products, isImageUrlInUse, getProductsUsingImage }}
+      value={{
+        products,
+        isImageUrlInUse,
+        getProductsUsingImage,
+        isImageInCarousel,
+      }}
     >
       {children}
     </ProductsContext.Provider>
