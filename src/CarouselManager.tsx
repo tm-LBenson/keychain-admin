@@ -69,7 +69,7 @@ const CarouselManager = () => {
       </p>
 
       <div className="w-full mb-10">
-        <h3 className="text-3xl mb-4">HeroCarousel Preview</h3>
+        <h3 className="text-3xl mb-4">Hero Carousel Preview</h3>
         <HeroCarousel />
       </div>
 
@@ -79,36 +79,6 @@ const CarouselManager = () => {
       >
         Add Image to Carousel
       </button>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mt-4 p-4">
-        {images.map((img, index) => (
-          <div
-            key={index}
-            className="rounded shadow-lg relative"
-          >
-            <img
-              className="max-h-[300px] object-cover"
-              src={img.url}
-              alt={img.name}
-            />
-            <div className="bottom-0 left-0 bg-gray-900 bg-opacity-75 text-white w-full text-center py-2">
-              {img.name}
-            </div>
-            <div className="p-4 flex flex-col items-start">
-              <button
-                onClick={() => toggleCarouselImage(img.url)}
-                className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 ${
-                  carouselImages.includes(img.url) ? "bg-green-500" : ""
-                }`}
-              >
-                {carouselImages.includes(img.url)
-                  ? "Remove from Carousel"
-                  : "Add to Carousel"}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Add Image to Carousel Modal */}
       <Modal
