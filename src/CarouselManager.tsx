@@ -85,7 +85,7 @@ const CarouselManager = () => {
         isOpen={isAddImageModalOpen}
         onClose={() => setIsAddImageModalOpen(false)}
       >
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto max-h-[80vh]">
           <h3 className="text-2xl font-bold">Add Image to Carousel</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mt-4">
             {images.map((img, index) => (
