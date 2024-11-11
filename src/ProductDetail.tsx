@@ -101,8 +101,6 @@ const ProductDetail: React.FC = () => {
             if (!id) return;
             const docRef = doc(db, "products", id);
             await deleteDoc(docRef);
-            alert("Product deleted successfully!");
-            //!TODO Redirect after delete
           }}
           className="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-4 rounded-lg"
         >
