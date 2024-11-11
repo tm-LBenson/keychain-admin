@@ -25,6 +25,7 @@ const ProductDetail: React.FC = () => {
   });
 
   const [editMode, setEditMode] = useState(false);
+  const [hasUnsavedOptions, setHasUnsavedOptions] = useState(false);
   const { id } = useParams<{ id: string }>();
 
   useEffect(() => {
@@ -68,12 +69,16 @@ const ProductDetail: React.FC = () => {
       description: product.description,
       imageUrls: product.imageUrls,
       onHand: product.onHand,
-      options: product.options,
       showOnStore: product.showOnStore,
+      unitAmount: product.unitAmount,
     };
 
     await updateDoc(docRef, updateData);
     setEditMode(false);
+  };
+
+  const handleOptionsChange = (unsaved: boolean) => {
+    setHasUnsavedOptions(unsaved);
   };
 
   return (
@@ -107,7 +112,13 @@ const ProductDetail: React.FC = () => {
 
       <Modal
         isOpen={editMode}
-        onClose={() => setEditMode(false)}
+        onClose={() => {
+          if (!hasUnsavedOptions) {
+            setEditMode(false);
+          } else {
+            alert("Please save or discard your changes before closing.");
+          }
+        }}
       >
         <div className="space-y-4 max-h-[80vh] overflow-y-auto">
           <label className="flex items-center space-x-2">
@@ -163,14 +174,19 @@ const ProductDetail: React.FC = () => {
               className="w-full px-2 py-1 border rounded"
             />
           </label>
-          {/* Integrate ProductOptionsForm here */}
-          <ProductOptionsForm productId={product.id} />
-          <button
-            onClick={saveUpdates}
-            className="mt-4 bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-          >
-            Save Changes
-          </button>
+          <ProductOptionsForm
+            productId={product.id}
+            onUnsavedChanges={handleOptionsChange}
+          />
+
+          {!hasUnsavedOptions && (
+            <button
+              onClick={saveUpdates}
+              className="mt-4 bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              Save Changes
+            </button>
+          )}
         </div>
       </Modal>
 
