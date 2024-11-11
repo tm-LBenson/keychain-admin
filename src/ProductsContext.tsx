@@ -21,6 +21,8 @@ export interface Product {
   unitAmount: UnitAmount;
   onHand: number;
   originalPrice?: string;
+  options?: string[];
+  showOnStore: false;
 }
 
 interface ProductsContextType {

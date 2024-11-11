@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import Modal from "./Modal";
 import { Product } from "./ProductsContext";
+import ProductOptionsForm from "./ProductOptionsForm";
 
 const ProductDetail: React.FC = () => {
   const [product, setProduct] = useState<Product>({
@@ -19,6 +20,8 @@ const ProductDetail: React.FC = () => {
     imageUrls: [""],
     unitAmount: { value: "", currencyCode: "USD" },
     onHand: 0,
+    options: [],
+    showOnStore: false,
   });
 
   const [editMode, setEditMode] = useState(false);
@@ -36,8 +39,10 @@ const ProductDetail: React.FC = () => {
           name: data.name || "",
           description: data.description || "",
           imageUrls: data.imageUrls || [""],
-          unitAmount: { value: data.price || "", currencyCode: "USD" },
+          unitAmount: data.unitAmount,
           onHand: data.onHand || 0,
+          options: data.options || [],
+          showOnStore: data.showOnStore || false,
         });
       } else {
         console.log("No such document!");
@@ -48,33 +53,10 @@ const ProductDetail: React.FC = () => {
   }, [id]);
 
   const handleInputChange = (
-    name: typeof product.name,
-    value: typeof product.name | typeof product.onHand,
+    name: keyof Product,
+    value: string | number | boolean,
   ) => {
     setProduct({ ...product, [name]: value });
-  };
-
-  const handleUrlChange = (index: number, url: string) => {
-    const newImageUrls = [...product.imageUrls];
-    newImageUrls[index] = url;
-    setProduct((prev) => ({ ...prev, imageUrls: newImageUrls }));
-  };
-  const addImageUrl = () => {
-    setProduct((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, ""] }));
-  };
-  const removeImageUrl = (index: number) => {
-    setProduct((prev) => {
-      const newImageUrls = [...prev.imageUrls];
-      newImageUrls.splice(index, 1);
-      return { ...prev, imageUrls: newImageUrls };
-    });
-  };
-  const deleteProduct = async () => {
-    if (!id) return;
-    const docRef = doc(db, "products", id);
-    await deleteDoc(docRef);
-    alert("Product deleted successfully!");
-    //!TODO Redirect after delete
   };
 
   const saveUpdates = async () => {
@@ -86,6 +68,8 @@ const ProductDetail: React.FC = () => {
       description: product.description,
       imageUrls: product.imageUrls,
       onHand: product.onHand,
+      options: product.options,
+      showOnStore: product.showOnStore,
     };
 
     await updateDoc(docRef, updateData);
@@ -108,7 +92,13 @@ const ProductDetail: React.FC = () => {
           Edit
         </button>
         <button
-          onClick={deleteProduct}
+          onClick={async () => {
+            if (!id) return;
+            const docRef = doc(db, "products", id);
+            await deleteDoc(docRef);
+            alert("Product deleted successfully!");
+            //!TODO Redirect after delete
+          }}
           className="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-4 rounded-lg"
         >
           Delete
@@ -119,7 +109,18 @@ const ProductDetail: React.FC = () => {
         isOpen={editMode}
         onClose={() => setEditMode(false)}
       >
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+          <label className="flex items-center space-x-2">
+            <span className="text-gray-700">Show On Store Page</span>
+            <input
+              type="checkbox"
+              checked={product.showOnStore}
+              onChange={(e) =>
+                handleInputChange("showOnStore", e.target.checked)
+              }
+              className="ml-2"
+            />
+          </label>
           <label className="block">
             <span className="text-gray-700">Product Name</span>
             <input
@@ -146,7 +147,7 @@ const ProductDetail: React.FC = () => {
               type="text"
               placeholder="Price"
               value={product.unitAmount.value}
-              onChange={(e) => handleInputChange("price", e.target.value)}
+              onChange={(e) => handleInputChange("unitAmount", e.target.value)}
               className="w-full px-2 py-1 border rounded"
             />
           </label>
@@ -162,35 +163,8 @@ const ProductDetail: React.FC = () => {
               className="w-full px-2 py-1 border rounded"
             />
           </label>
-          {product.imageUrls.map((url, index) => (
-            <div
-              key={index}
-              className="flex items-center space-x-2"
-            >
-              <label className="block w-full">
-                <span className="text-gray-700">Image URL</span>
-                <input
-                  type="text"
-                  placeholder="Image URL"
-                  value={url}
-                  onChange={(e) => handleUrlChange(index, e.target.value)}
-                  className="w-full px-2 py-1 border rounded"
-                />
-              </label>
-              <button
-                onClick={() => removeImageUrl(index)}
-                className="bg-red-500 text-white px-2 py-1 rounded-lg"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={addImageUrl}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg"
-          >
-            Add Image URL
-          </button>
+          {/* Integrate ProductOptionsForm here */}
+          <ProductOptionsForm productId={product.id} />
           <button
             onClick={saveUpdates}
             className="mt-4 bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
