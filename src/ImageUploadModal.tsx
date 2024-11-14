@@ -1,5 +1,5 @@
 // ImageUploadModal.tsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, bucketName } from "../aws-config";
@@ -27,17 +27,21 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 
   const handleUpload = async () => {
     if (file) {
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: filename || file.name,
-        Body: file,
-      });
-      await s3Client.send(command);
-      const imageUrl = `https://${bucketName}.s3.amazonaws.com/${filename}`;
-      onImageUpload(imageUrl);
-      setFile(null);
-      setFilename("");
-      onClose();
+      try {
+        const command = new PutObjectCommand({
+          Bucket: bucketName,
+          Key: filename || file.name,
+          Body: file,
+        });
+        await s3Client.send(command);
+        const imageUrl = `https://${bucketName}.s3.amazonaws.com/${filename}`;
+        onImageUpload(imageUrl);
+        setFile(null);
+        setFilename("");
+        onClose();
+      } catch (error) {
+        console.error("Error uploading image to S3: ", error);
+      }
     }
   };
 
