@@ -1,20 +1,12 @@
+// S3ImageManager.tsx
 import { useState, useEffect } from "react";
-import {
-  ListObjectsCommand,
-  PutObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, bucketName } from "../aws-config";
 import Modal from "./Modal";
 import { useProducts } from "./ProductsContext";
-
-interface Image {
-  name: string;
-  url: string;
-}
+import useS3Images, { Image } from "./useS3Images";
 
 const S3ImageManager = () => {
-  const [images, setImages] = useState<Image[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [filename, setFilename] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,10 +14,10 @@ const S3ImageManager = () => {
   const [imageStatus, setImageStatus] = useState<{ [key: string]: boolean }>(
     {},
   );
+  const [refreshFlag, setRefreshFlag] = useState(false); // To trigger image refresh
 
-  useEffect(() => {
-    fetchImages();
-  }, []);
+  // Use the custom hook to fetch images
+  const images = useS3Images(refreshFlag);
 
   useEffect(() => {
     const fetchImageUsageStatus = async () => {
@@ -45,21 +37,6 @@ const S3ImageManager = () => {
     }
   }, [images, getProductsUsingImage, isImageInCarousel]);
 
-  const fetchImages = async () => {
-    try {
-      const command = new ListObjectsCommand({ Bucket: bucketName });
-      const response = await s3Client.send(command);
-      const fetchedImages =
-        response.Contents?.map((file) => ({
-          name: file.Key!,
-          url: `https://${bucketName}.s3.amazonaws.com/${file.Key}`,
-        })) || [];
-      setImages(fetchedImages);
-    } catch (error) {
-      console.error("Error fetching images from S3: ", error);
-    }
-  };
-
   const handleUpload = async () => {
     if (file) {
       try {
@@ -69,10 +46,10 @@ const S3ImageManager = () => {
           Body: file,
         });
         await s3Client.send(command);
-        fetchImages();
         setFile(null);
         setFilename("");
         setIsModalOpen(false);
+        setRefreshFlag((prev) => !prev); // Toggle to refresh images
       } catch (error) {
         console.error("Error uploading image to S3: ", error);
       }
@@ -86,7 +63,7 @@ const S3ImageManager = () => {
         Key: image.name,
       });
       await s3Client.send(command);
-      fetchImages();
+      setRefreshFlag((prev) => !prev); // Toggle to refresh images
     } catch (error) {
       console.error("Error deleting image from S3: ", error);
     }

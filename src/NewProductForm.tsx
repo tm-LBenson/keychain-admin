@@ -1,8 +1,10 @@
+// NewProductForm.tsx
 import React, { useState } from "react";
-import ImageUploadModal from "./ImageUploadModal"; // Make sure this import path is correct
+import ImageUploadModal from "./ImageUploadModal"; // Ensure correct path
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "./firestore";
 import { UnitAmount } from "./ProductsContext";
+import useS3Images, { Image } from "./useS3Images"; // Import the custom hook
 
 interface NewProduct {
   name: string;
@@ -26,12 +28,19 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
   });
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(-1); // To track which image URL to update
+  const [refreshFlag, setRefreshFlag] = useState(false); // To trigger image refresh
+
+  // Fetch images using the custom hook
+  const images = useS3Images(refreshFlag);
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = event.target;
-    setNewProduct((prev) => ({ ...prev, [name]: value }));
+    setNewProduct((prev) => ({
+      ...prev,
+      [name]: name === "onHand" ? parseInt(value) : value,
+    }));
   };
 
   const handleImageUrlChange = (index: number, url: string) => {
@@ -54,7 +63,6 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
   };
 
   const handleImageUrlAddition = (url: string) => {
-    // Update the active image URL or add a new one if none is active
     if (activeImageIndex >= 0) {
       handleImageUrlChange(activeImageIndex, url);
     } else {
@@ -65,10 +73,11 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
       }));
     }
     setIsUploadModalOpen(false);
+    setRefreshFlag((prev) => !prev); // Refresh images after upload
   };
 
   const openUploadModal = (index: number) => {
-    setActiveImageIndex(index); // Set the current index for updating the URL
+    setActiveImageIndex(index);
     setIsUploadModalOpen(true);
   };
 
@@ -112,6 +121,22 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
             placeholder="Image URL"
             className="flex-1 p-2 border rounded"
           />
+          {/* Dropdown to select existing images */}
+          <select
+            className="p-2 border rounded"
+            value={url}
+            onChange={(e) => handleImageUrlChange(index, e.target.value)}
+          >
+            <option value="">Select Image</option>
+            {images.map((img: Image) => (
+              <option
+                key={img.url}
+                value={img.url}
+              >
+                {img.name}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => openUploadModal(index)}
             className="p-2 rounded bg-blue-500 text-white"

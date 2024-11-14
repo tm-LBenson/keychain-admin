@@ -1,15 +1,12 @@
+// ProductDetail.tsx
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom"; // Updated import
 import { db } from "./firestore";
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  DocumentData,
-  deleteDoc,
-} from "firebase/firestore";
+import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import Modal from "./Modal";
 import { Product } from "./ProductsContext";
+import useS3Images, { Image } from "./useS3Images"; // Import the custom hook
+import ImageUploadModal from "./ImageUploadModal";
 
 const ProductDetail: React.FC = () => {
   const [product, setProduct] = useState<Product>({
@@ -23,6 +20,11 @@ const ProductDetail: React.FC = () => {
 
   const [editMode, setEditMode] = useState(false);
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate(); // Replaced useHistory with useNavigate
+  const [refreshFlag, setRefreshFlag] = useState(false); // To trigger image refresh
+
+  // Fetch images using the custom hook
+  const images = useS3Images(refreshFlag);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -30,13 +32,16 @@ const ProductDetail: React.FC = () => {
       const docRef = doc(db, "products", id);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        const data = docSnap.data() as DocumentData;
+        const data = docSnap.data();
         setProduct({
           id: docSnap.id,
           name: data.name || "",
           description: data.description || "",
           imageUrls: data.imageUrls || [""],
-          unitAmount: { value: data.price || "", currencyCode: "USD" },
+          unitAmount: {
+            value: data.unitAmount?.value || "",
+            currencyCode: "USD",
+          },
           onHand: data.onHand || 0,
         });
       } else {
@@ -47,11 +52,11 @@ const ProductDetail: React.FC = () => {
     fetchProduct();
   }, [id]);
 
-  const handleInputChange = (
-    name: typeof product.name,
-    value: typeof product.name | typeof product.onHand,
-  ) => {
-    setProduct({ ...product, [name]: value });
+  const handleInputChange = (name: string, value: string | number) => {
+    setProduct((prev) => ({
+      ...prev,
+      [name]: name === "onHand" ? parseInt(value as string) : value,
+    }));
   };
 
   const handleUrlChange = (index: number, url: string) => {
@@ -59,9 +64,11 @@ const ProductDetail: React.FC = () => {
     newImageUrls[index] = url;
     setProduct((prev) => ({ ...prev, imageUrls: newImageUrls }));
   };
+
   const addImageUrl = () => {
     setProduct((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, ""] }));
   };
+
   const removeImageUrl = (index: number) => {
     setProduct((prev) => {
       const newImageUrls = [...prev.imageUrls];
@@ -69,12 +76,13 @@ const ProductDetail: React.FC = () => {
       return { ...prev, imageUrls: newImageUrls };
     });
   };
+
   const deleteProduct = async () => {
     if (!id) return;
     const docRef = doc(db, "products", id);
     await deleteDoc(docRef);
     alert("Product deleted successfully!");
-    //!TODO Redirect after delete
+    navigate("/"); // Updated from history.push("/") to navigate("/")
   };
 
   const saveUpdates = async () => {
@@ -85,11 +93,33 @@ const ProductDetail: React.FC = () => {
       name: product.name,
       description: product.description,
       imageUrls: product.imageUrls,
+      unitAmount: product.unitAmount,
       onHand: product.onHand,
     };
 
-    await updateDoc(docRef, updateData);
+    try {
+      await updateDoc(docRef, updateData);
+      alert("Product updated successfully!");
+      setEditMode(false);
+      setRefreshFlag((prev) => !prev); // Refresh images if necessary
+    } catch (error) {
+      console.error("Error updating product: ", error);
+      alert("Failed to update product.");
+    }
+  };
+
+  const handleImageUrlAddition = (url: string) => {
+    handleUrlChange(activeImageIndex, url);
     setEditMode(false);
+    setRefreshFlag((prev) => !prev); // Refresh images after upload
+  };
+
+  const [activeImageIndex, setActiveImageIndex] = useState(-1); // To track which image URL to update
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  const openUploadModal = (index: number) => {
+    setActiveImageIndex(index);
+    setIsUploadModalOpen(true);
   };
 
   return (
@@ -146,7 +176,12 @@ const ProductDetail: React.FC = () => {
               type="text"
               placeholder="Price"
               value={product.unitAmount.value}
-              onChange={(e) => handleInputChange("price", e.target.value)}
+              onChange={(e) =>
+                setProduct((prev) => ({
+                  ...prev,
+                  unitAmount: { ...prev.unitAmount, value: e.target.value },
+                }))
+              }
               className="w-full px-2 py-1 border rounded"
             />
           </label>
@@ -177,6 +212,28 @@ const ProductDetail: React.FC = () => {
                   className="w-full px-2 py-1 border rounded"
                 />
               </label>
+              {/* Dropdown to select existing images */}
+              <select
+                className="p-2 border rounded"
+                value={url}
+                onChange={(e) => handleUrlChange(index, e.target.value)}
+              >
+                <option value="">Select Image</option>
+                {images.map((img: Image) => (
+                  <option
+                    key={img.url}
+                    value={img.url}
+                  >
+                    {img.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => openUploadModal(index)}
+                className="p-2 rounded bg-blue-500 text-white"
+              >
+                Upload Image
+              </button>
               <button
                 onClick={() => removeImageUrl(index)}
                 className="bg-red-500 text-white px-2 py-1 rounded-lg"
@@ -200,6 +257,17 @@ const ProductDetail: React.FC = () => {
         </div>
       </Modal>
 
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+      >
+        <ImageUploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onImageUpload={handleImageUrlAddition}
+        />
+      </Modal>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="w-full">
           <img
@@ -212,6 +280,7 @@ const ProductDetail: React.FC = () => {
           <h1 className="text-2xl font-bold">{product.name}</h1>
           <p>{product.description}</p>
           <p className="text-xl font-bold">${product.unitAmount.value}</p>
+          <p>Stock On Hand: {product.onHand}</p>
         </div>
       </div>
     </div>
