@@ -114,7 +114,7 @@ const NewProductForm: React.FC<ModalProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
       <label className="block">
         <span className="text-gray-700">Product Name</span>
         <input
