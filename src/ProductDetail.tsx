@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { db } from "./firestore";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import Modal from "./Modal";
-import { Product } from "./ProductsContext";
+import { Product, ProductOption } from "./ProductsContext";
 import ProductOptionsForm from "./ProductOptionsForm";
 import useS3Images, { Image } from "./useS3Images";
 import ImageUploadModal from "./ImageUploadModal";
@@ -22,7 +22,9 @@ const ProductDetail: React.FC = () => {
   });
 
   const [editMode, setEditMode] = useState(false);
-  const [hasUnsavedOptions, setHasUnsavedOptions] = useState(false);
+  const [unsavedOptions, setUnsavedOptions] = useState<ProductOption[]>([]);
+  const [isEditingOptions, setIsEditingOptions] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [refreshFlag, setRefreshFlag] = useState(false);
@@ -61,13 +63,16 @@ const ProductDetail: React.FC = () => {
   ) => {
     if (name === "onHand") {
       setProduct((prev) => ({ ...prev, [name]: parseInt(value as string) }));
+      setHasUnsavedChanges(true);
     } else if (name === "unitAmount") {
       setProduct((prev) => ({
         ...prev,
         unitAmount: { ...prev.unitAmount, value: value as string },
       }));
+      setHasUnsavedChanges(true);
     } else {
       setProduct((prev) => ({ ...prev, [name]: value }));
+      setHasUnsavedChanges(true);
     }
   };
 
@@ -75,10 +80,12 @@ const ProductDetail: React.FC = () => {
     const newImageUrls = [...product.imageUrls];
     newImageUrls[index] = url;
     setProduct((prev) => ({ ...prev, imageUrls: newImageUrls }));
+    setHasUnsavedChanges(true);
   };
 
   const addImageUrl = () => {
     setProduct((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, ""] }));
+    setHasUnsavedChanges(true);
   };
 
   const removeImageUrl = (index: number) => {
@@ -87,6 +94,7 @@ const ProductDetail: React.FC = () => {
       newImageUrls.splice(index, 1);
       return { ...prev, imageUrls: newImageUrls };
     });
+    setHasUnsavedChanges(true);
   };
 
   const deleteProduct = async () => {
@@ -99,6 +107,11 @@ const ProductDetail: React.FC = () => {
 
   const saveUpdates = async () => {
     if (!id) return;
+
+    // Use unsavedOptions if available, else use existing product options
+    const updatedOptions =
+      unsavedOptions.length > 0 ? unsavedOptions : product.options || [];
+
     const docRef = doc(db, "products", id);
 
     const updateData = {
@@ -108,12 +121,15 @@ const ProductDetail: React.FC = () => {
       unitAmount: product.unitAmount,
       onHand: product.onHand,
       showOnStore: product.showOnStore,
-      options: product.options,
+      options: updatedOptions,
     };
 
     try {
       await updateDoc(docRef, updateData);
       alert("Product updated successfully!");
+      setProduct((prev) => ({ ...prev, options: updatedOptions }));
+      setUnsavedOptions([]);
+      setHasUnsavedChanges(false);
       setEditMode(false);
       setRefreshFlag((prev) => !prev);
     } catch (error) {
@@ -136,8 +152,18 @@ const ProductDetail: React.FC = () => {
     setIsUploadModalOpen(true);
   };
 
-  const handleOptionsChange = (unsaved: boolean) => {
-    setHasUnsavedOptions(unsaved);
+  const handleUnsavedOptionsChange = (options: ProductOption[]) => {
+    setUnsavedOptions(options);
+  };
+
+  const handleEditingOptionsChange = (isEditing: boolean) => {
+    setIsEditingOptions(isEditing);
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setUnsavedOptions([]);
+    setHasUnsavedChanges(false);
   };
 
   return (
@@ -166,14 +192,29 @@ const ProductDetail: React.FC = () => {
       <Modal
         isOpen={editMode}
         onClose={() => {
-          if (!hasUnsavedOptions) {
+          if (!hasUnsavedChanges && unsavedOptions.length === 0) {
             setEditMode(false);
           } else {
-            alert("Please save or discard your changes before closing.");
+            const confirmDiscard = window.confirm(
+              "You have unsaved changes. Are you sure you want to discard them?",
+            );
+            if (confirmDiscard) {
+              cancelEdit();
+            }
           }
         }}
       >
         <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Edit Product</h2>
+            <button
+              onClick={cancelEdit}
+              className="text-red-500 hover:text-red-700"
+            >
+              Cancel
+            </button>
+          </div>
+
           <label className="flex items-center space-x-2">
             <span className="text-gray-700">Show On Store Page</span>
             <input
@@ -281,18 +322,31 @@ const ProductDetail: React.FC = () => {
           </button>
 
           <ProductOptionsForm
-            productId={product.id}
-            onUnsavedChanges={handleOptionsChange}
+            initialOptions={product.options || []}
+            onOptionsChange={handleUnsavedOptionsChange}
+            onUnsavedChanges={(unsaved) => setHasUnsavedChanges(unsaved)}
+            onEditingOptionsChange={handleEditingOptionsChange}
           />
 
-          {!hasUnsavedOptions && (
-            <button
-              onClick={saveUpdates}
-              className="mt-4 bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-            >
-              Save Changes
-            </button>
-          )}
+          <div className="flex justify-end space-x-2 mt-4">
+            {!isEditingOptions && (
+              <>
+                <button
+                  onClick={cancelEdit}
+                  className="bg-gray-500 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveUpdates}
+                  disabled={!hasUnsavedChanges && unsavedOptions.length === 0}
+                  className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                >
+                  Save Changes
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </Modal>
 

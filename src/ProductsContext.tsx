@@ -1,3 +1,4 @@
+// ProductsContext.tsx
 import React, {
   createContext,
   useContext,
@@ -13,6 +14,12 @@ export interface UnitAmount {
   value: string;
 }
 
+// Moved ProductOption interface here
+export interface ProductOption {
+  name: string;
+  choices: string[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -21,8 +28,8 @@ export interface Product {
   unitAmount: UnitAmount;
   onHand: number;
   originalPrice?: string;
-  options?: string[];
-  showOnStore: false;
+  options?: ProductOption[]; // Updated to use ProductOption[]
+  showOnStore: boolean; // Changed from false to boolean type
 }
 
 interface ProductsContextType {
@@ -35,6 +42,7 @@ interface ProductsContextType {
 const ProductsContext = createContext<ProductsContextType | undefined>(
   undefined,
 );
+
 interface ProductsProviderProps {
   children: ReactNode;
 }
@@ -47,10 +55,14 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
   useEffect(() => {
     const fetchProducts = async () => {
       const querySnapshot = await getDocs(collection(db, "products"));
-      const productsArray: Product[] = querySnapshot.docs.map((doc) => ({
-        ...(doc.data() as Product),
-        id: doc.id,
-      }));
+      const productsArray: Product[] = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          ...(data as Product),
+          id: doc.id,
+          options: data.options || [], // Ensure options is an array
+        };
+      });
       setProducts(productsArray);
     };
 

@@ -1,17 +1,20 @@
+// ProductOptionsForm.tsx
 import React, { useEffect, useState } from "react";
-import { db } from "./firestore";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { ProductOption } from "./ProductsContext";
 
-export interface ProductOption {
-  name: string;
-  choices: string[];
+interface ProductOptionsFormProps {
+  initialOptions: ProductOption[];
+  onOptionsChange: (options: ProductOption[]) => void;
+  onUnsavedChanges: (unsaved: boolean) => void;
+  onEditingOptionsChange: (isEditing: boolean) => void;
 }
 
-const ProductOptionsForm: React.FC<{
-  productId: string;
-  initialOptions?: ProductOption[];
-  onUnsavedChanges: (unsaved: boolean) => void;
-}> = ({ productId, initialOptions = [], onUnsavedChanges }) => {
+const ProductOptionsForm: React.FC<ProductOptionsFormProps> = ({
+  initialOptions,
+  onOptionsChange,
+  onUnsavedChanges,
+  onEditingOptionsChange,
+}) => {
   const [options, setOptions] = useState<ProductOption[]>(initialOptions);
   const [newOptionName, setNewOptionName] = useState<string>("");
   const [newChoice, setNewChoice] = useState<string>("");
@@ -24,35 +27,24 @@ const ProductOptionsForm: React.FC<{
   const [editedChoice, setEditedChoice] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [isCreatingOption, setIsCreatingOption] = useState<boolean>(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState<number | null>(null);
+  const [expandedOptionIndex, setExpandedOptionIndex] = useState<number | null>(
+    null,
+  );
 
-  // Load initial product options from Firestore when productId changes
+  // Update options when initialOptions change
   useEffect(() => {
-    const loadProductOptions = async () => {
-      if (!productId) return;
+    setOptions(initialOptions);
+  }, [initialOptions]);
 
-      try {
-        const productRef = doc(db, "products", productId);
-        const productSnap = await getDoc(productRef);
-        if (productSnap.exists()) {
-          const productData = productSnap.data();
-          if (productData?.options) {
-            setOptions(productData.options);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading product options:", error);
-      }
-    };
-
-    loadProductOptions();
-  }, [productId]);
-
+  // Function to handle creating a new option
   const handleCreateOption = () => {
     setIsCreatingOption(true);
+    setHasUnsavedChanges(true);
     onUnsavedChanges(true);
+    onEditingOptionsChange(true);
   };
 
+  // Function to save the new option
   const handleSaveNewOption = () => {
     if (newOptionName.trim() !== "") {
       setOptions((prevOptions) => [
@@ -63,9 +55,21 @@ const ProductOptionsForm: React.FC<{
       setIsCreatingOption(false);
       setHasUnsavedChanges(true);
       onUnsavedChanges(true);
+      onEditingOptionsChange(false);
     }
   };
 
+  // Function to cancel creating a new option
+  const handleCancelNewOption = () => {
+    setNewOptionName("");
+    setIsCreatingOption(false);
+    if (!hasUnsavedChanges) {
+      onUnsavedChanges(false);
+    }
+    onEditingOptionsChange(false);
+  };
+
+  // Function to add a new choice to an option
   const handleAddChoice = (optionIndex: number) => {
     if (newChoice.trim() === "") return;
     setOptions((prevOptions) => {
@@ -81,16 +85,16 @@ const ProductOptionsForm: React.FC<{
     onUnsavedChanges(true);
   };
 
+  // Function to start editing a choice
   const handleEditChoice = (optionIndex: number, choiceIndex: number) => {
     setEditingChoiceIndex(choiceIndex);
     setEditedChoice(options[optionIndex].choices[choiceIndex]);
     setEditingOptionIndex(optionIndex);
+    onEditingOptionsChange(true);
   };
 
-  const handleSaveEditedChoice = async (
-    optionIndex: number,
-    choiceIndex: number,
-  ) => {
+  // Function to save the edited choice
+  const handleSaveEditedChoice = (optionIndex: number, choiceIndex: number) => {
     setOptions((prevOptions) => {
       const updatedOptions = prevOptions.map((option, i) => {
         if (i === optionIndex) {
@@ -108,70 +112,84 @@ const ProductOptionsForm: React.FC<{
       return updatedOptions;
     });
 
-    try {
-      if (productId) {
-        const productRef = doc(db, "products", productId);
-        await updateDoc(productRef, {
-          options: JSON.parse(JSON.stringify(options)),
-        });
-        console.log("Options saved to Firestore.");
-      } else {
-        console.error("Product ID is not defined. Cannot save to Firestore.");
-      }
-    } catch (error) {
-      console.error("Error saving options to Firestore: ", error);
-    }
-
     // Reset the editing state
     setEditingChoiceIndex(null);
     setEditingOptionIndex(null);
     setEditedChoice("");
     setHasUnsavedChanges(true);
     onUnsavedChanges(true);
+    onEditingOptionsChange(false);
   };
 
+  // Function to cancel editing a choice
+  const handleCancelEditChoice = () => {
+    setEditingChoiceIndex(null);
+    setEditingOptionIndex(null);
+    setEditedChoice("");
+    onEditingOptionsChange(false);
+  };
+
+  // Function to remove an option
   const handleRemoveOption = (index: number) => {
     setOptions((prevOptions) => prevOptions.filter((_, i) => i !== index));
     if (editingOptionIndex === index) {
       setEditingOptionIndex(null);
+      setEditingChoiceIndex(null);
     }
     setHasUnsavedChanges(true);
     onUnsavedChanges(true);
   };
 
-  const handleSaveOptions = async () => {
-    if (!productId) {
-      console.error("Product ID is undefined. Cannot save options.");
-      return;
-    }
+  // Function to save all options (pass to parent)
+  const handleSaveOptions = () => {
+    onOptionsChange(options);
+    setHasUnsavedChanges(false);
+    onUnsavedChanges(false);
+  };
 
-    try {
-      const productRef = doc(db, "products", productId);
-      const optionsToSave = JSON.parse(JSON.stringify(options));
-      console.log("Saving options:", optionsToSave);
-
-      await updateDoc(productRef, {
-        options: optionsToSave,
-      });
-      setHasUnsavedChanges(false);
-      onUnsavedChanges(false);
-      console.log("Options saved successfully.");
-    } catch (error) {
-      console.error("Error saving options: ", error);
-    }
+  // Function to cancel all unsaved changes
+  const handleCancelChanges = () => {
+    setOptions(initialOptions);
+    setHasUnsavedChanges(false);
+    onUnsavedChanges(false);
+    setIsCreatingOption(false);
+    setNewOptionName("");
+    setNewChoice("");
+    setEditingChoiceIndex(null);
+    setEditingOptionIndex(null);
+    setEditedChoice("");
+    onEditingOptionsChange(false);
   };
 
   return (
     <div className="flex flex-col">
       <h2 className="text-xl font-bold mb-4">Product Options</h2>
-      <button
-        onClick={handleCreateOption}
-        className="p-2 rounded mr-5 bg-blue-500 text-white mb-4"
-      >
-        Create Option
-      </button>
+      <div className="flex space-x-2 mb-4">
+        <button
+          onClick={handleCreateOption}
+          className="p-2 rounded bg-blue-500 text-white"
+        >
+          Create Option
+        </button>
+        {hasUnsavedChanges && (
+          <>
+            <button
+              onClick={handleSaveOptions}
+              className="p-2 rounded bg-green-500 text-white"
+            >
+              Save Options
+            </button>
+            <button
+              onClick={handleCancelChanges}
+              className="p-2 rounded bg-gray-500 text-white"
+            >
+              Cancel Changes
+            </button>
+          </>
+        )}
+      </div>
       {isCreatingOption && (
-        <div className="mb-4">
+        <div className="mb-4 border p-4 rounded bg-gray-100">
           <input
             type="text"
             value={newOptionName}
@@ -179,106 +197,137 @@ const ProductOptionsForm: React.FC<{
             placeholder="Option Name (e.g., Size, Color)"
             className="block w-full mb-2 p-2 border rounded"
           />
-          <button
-            onClick={handleSaveNewOption}
-            className="p-2 rounded bg-green-500 text-white"
-          >
-            Save Option
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleSaveNewOption}
+              className="p-2 rounded bg-green-500 text-white"
+            >
+              Save Option
+            </button>
+            <button
+              onClick={handleCancelNewOption}
+              className="p-2 rounded bg-red-500 text-white"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
       {options.map((option, optionIndex) => (
         <div
           key={optionIndex}
-          className="mb-4 flex flex-col mr-5"
+          className="mb-4 border p-4 rounded"
         >
-          <label className="block font-bold mb-2">{option.name}</label>
-          <div className="relative">
-            <div
-              className="block w-full p-2 border rounded mb-2 cursor-pointer"
+          <div className="flex justify-between items-center">
+            <label className="block font-bold">{option.name}</label>
+            <button
+              onClick={() => handleRemoveOption(optionIndex)}
+              className="p-1 rounded bg-red-500 text-white"
+            >
+              Remove Option
+            </button>
+          </div>
+          <div className="mt-2">
+            <button
               onClick={() =>
-                setIsDropdownOpen((prev) =>
-                  prev === optionIndex ? null : optionIndex,
+                setExpandedOptionIndex(
+                  expandedOptionIndex === optionIndex ? null : optionIndex,
                 )
               }
+              className="p-2 rounded bg-blue-500 text-white"
             >
-              {isDropdownOpen === optionIndex ? (
-                <span className="font-bold bg-green-500 text-white p-2 rounded ">
-                  Close Choices
-                </span>
-              ) : (
-                "Select or Add a Choice"
-              )}
-            </div>
-
-            {isDropdownOpen === optionIndex && (
-              <ul className="absolute left-0 top-full mt-2 p-2 bg-white border rounded shadow-md w-full z-10">
-                {option.choices.map((choice, choiceIndex) => (
-                  <li
-                    key={choiceIndex}
-                    className="p-2 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleEditChoice(optionIndex, choiceIndex)}
-                  >
-                    {editingChoiceIndex === choiceIndex &&
-                    editingOptionIndex === optionIndex ? (
-                      <div>
-                        <input
-                          type="text"
-                          value={editedChoice}
-                          onChange={(e) => setEditedChoice(e.target.value)}
-                          className="flex-1 p-2 border rounded mb-2 w-full"
-                        />
-                        <button
-                          onClick={() =>
-                            handleSaveEditedChoice(optionIndex, choiceIndex)
-                          }
-                          className="p-2 rounded bg-green-500 text-white w-full"
-                        >
-                          Save Edited Choice
-                        </button>
-                      </div>
-                    ) : (
-                      choice
-                    )}
-                  </li>
-                ))}
-                <li className="mt-2">
-                  <label>
-                    Add New Choice
-                    <input
-                      type="text"
-                      value={newChoice}
-                      onChange={(e) => setNewChoice(e.target.value)}
-                      placeholder="New Choice"
-                      className="flex-1 p-2 border rounded mb-2 w-full"
-                    />
-                  </label>
-                  <button
-                    onClick={() => handleAddChoice(optionIndex)}
-                    className="p-2 rounded bg-green-500 text-white w-full"
-                  >
-                    Add Choice
-                  </button>
-                </li>
-              </ul>
-            )}
+              {expandedOptionIndex === optionIndex
+                ? "Hide Choices"
+                : "Show Choices"}
+            </button>
           </div>
-          <button
-            onClick={() => handleRemoveOption(optionIndex)}
-            className="p-2 rounded self-end bg-red-500 text-white mt-2"
-          >
-            Remove {option.name} Option
-          </button>
+          {expandedOptionIndex === optionIndex && (
+            <div className="mt-2">
+              {option.choices.map((choice, choiceIndex) => (
+                <div
+                  key={choiceIndex}
+                  className="flex items-center mb-2"
+                >
+                  {editingOptionIndex === optionIndex &&
+                  editingChoiceIndex === choiceIndex ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editedChoice}
+                        onChange={(e) => setEditedChoice(e.target.value)}
+                        className="flex-1 p-2 border rounded mr-2"
+                      />
+                      <button
+                        onClick={() =>
+                          handleSaveEditedChoice(optionIndex, choiceIndex)
+                        }
+                        className="p-2 rounded bg-green-500 text-white mr-2"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCancelEditChoice}
+                        className="p-2 rounded bg-gray-500 text-white"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1">{choice}</span>
+                      <button
+                        onClick={() =>
+                          handleEditChoice(optionIndex, choiceIndex)
+                        }
+                        className="p-1 rounded bg-blue-500 text-white mr-2"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Remove the choice
+                          setOptions((prevOptions) => {
+                            const updatedOptions = prevOptions.map((opt, i) => {
+                              if (i === optionIndex) {
+                                const updatedChoices = opt.choices.filter(
+                                  (_, j) => j !== choiceIndex,
+                                );
+                                return { ...opt, choices: updatedChoices };
+                              }
+                              return opt;
+                            });
+                            return updatedOptions;
+                          });
+                          setHasUnsavedChanges(true);
+                          onUnsavedChanges(true);
+                        }}
+                        className="p-1 rounded bg-red-500 text-white"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center mt-2">
+                <input
+                  type="text"
+                  value={newChoice}
+                  onChange={(e) => setNewChoice(e.target.value)}
+                  placeholder="New Choice"
+                  className="flex-1 p-2 border rounded mr-2"
+                />
+                <button
+                  onClick={() => handleAddChoice(optionIndex)}
+                  className="p-2 rounded bg-green-500 text-white"
+                >
+                  Add Choice
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ))}
-      {hasUnsavedChanges && (
-        <button
-          onClick={handleSaveOptions}
-          className="p-2 rounded mr-5 bg-blue-700 text-white"
-        >
-          Save All Options
-        </button>
-      )}
     </div>
   );
 };
